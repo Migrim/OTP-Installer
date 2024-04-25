@@ -1,0 +1,241 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Server Dashboard</title>
+    <link rel="icon" href="/favicon.ico">
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #222;
+            color: #fff;
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: flex-start;
+            min-height: 100vh;
+            text-align: center;
+        }
+        #console::-webkit-scrollbar {
+            width: 5px; 
+        }
+        #console::-webkit-scrollbar-track {
+            background: transparent; 
+        }
+        #console::-webkit-scrollbar-thumb {
+            background-color: #888; 
+            border-radius: 10px; 
+        }
+        .button {
+            padding: 10px 20px;
+            font-size: 16px;
+            margin: 5px;
+            cursor: pointer;
+            background-color: #444;
+            border: none;
+            color: #fff;
+            border-radius: 5px;
+            transition: background-color 0.3s ease;
+        }
+        .button:hover {
+            background-color: #555; 
+        }
+        .section {
+            margin-bottom: 20px;
+        }
+        h1, h2 {
+            color: #fff;
+            margin-bottom: 10px;
+        }
+        #console {
+            font-family: 'Consolas', 'Courier New', monospace;
+            position: relative;
+            color: #fff;  
+            background-color: #1a1a1a;  
+            margin-top: 20px;
+            border: none;
+            padding: 10px;
+            height: 200px;
+            width: 80%;
+            max-width: 600px;
+            overflow-y: auto;
+            border-radius: 10px;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.5);  
+            text-align: left;
+            white-space: pre-wrap;
+        }
+        .console-message {
+            margin-bottom: 8px;
+            padding: 4px; 
+            background-color: #282c34; 
+            border-radius: 4px;  
+            color: inherit; 
+        }
+        .loading-placeholder {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
+            background-size: 200% 100%;
+            animation: loading 1.5s infinite;
+            border-radius: 10px;
+        }
+        @keyframes loading {
+            0% {
+                background-position: 100% 0;
+            }
+            100% {
+                background-position: -100% 0;
+            }
+        }
+        .button.disabled {
+            background-color: #a94442;
+            cursor: not-allowed;
+        }
+    </style>
+</head>
+<body>
+    <h1>Server Dashboard</h1>
+    <div class="section">
+        <button id="startServerBtn" onclick="startServer()" class="button">Start Server</button>
+        <button id="stopServerBtn" onclick="stopServer()" class="button">Stop Server</button>
+        <input type="text" id="portInput" class="button" placeholder="Port">
+        <button onclick="changePort()" class="button">Change Port</button>
+    </div>
+    <div class="section">
+        <h2>Database Options</h2>
+        <button onclick="backupDatabase()" class="button">Backup Database</button>
+        <button onclick="restoreDatabase()" class="button">Restore Database</button>
+    </div>
+    <div id="console">
+        <div id="placeholder" class="loading-placeholder"></div>
+        <span id="consoleInitialText" style="display: none;">Console output.</span>
+    </div>    
+    
+    <input type="text" id="commandInput" class="button" placeholder="Type command here" onkeydown="handleCommand(event)" style="width: calc(84% - 40px);">
+       
+    <script type="text/javascript" src="/eel.js"></script>
+    <script type="text/javascript">
+        eel.expose(show_install_page);
+        function show_install_page(show) {
+            if (show) {
+                window.location.href = 'install.html';  
+            }
+        }
+    
+        let serverRunning = false;
+        let startServerBtn = document.getElementById("startServerBtn");
+        let stopServerBtn = document.getElementById("stopServerBtn");
+
+        eel.expose(update_output);
+        function update_output(data) {
+            let consoleDiv = document.getElementById("console");
+            let placeholder = document.getElementById("placeholder");
+            let initialText = document.getElementById("consoleInitialText");
+    
+            if (placeholder) {
+                consoleDiv.removeChild(placeholder);  
+                initialText.style.display = 'none';
+            }
+    
+            let newLine = document.createElement("div");
+            newLine.textContent = data;
+            newLine.className = 'console-message';  
+            consoleDiv.appendChild(newLine);
+            consoleDiv.scrollTop = consoleDiv.scrollHeight;  
+        }
+    
+        function startServer() {
+            if (!serverRunning) {
+                eel.start_server(); 
+                serverRunning = true;
+                startServerBtn.classList.add('disabled');
+                stopServerBtn.classList.remove('disabled');
+            }
+        }
+    
+        function stopServer() {
+            if (serverRunning) {
+                eel.stop_server(); 
+                serverRunning = false;
+                stopServerBtn.classList.add('disabled');
+                startServerBtn.classList.remove('disabled');
+            }
+        }
+    
+        eel.expose(backupDatabase);
+        function backupDatabase() {
+            eel.backup_database()(function(response) {
+                update_output(response); 
+            });
+        }
+    
+        eel.expose(restoreDatabase);
+        function restoreDatabase() {
+            eel.restore_database()(function(response) {
+                update_output(response);  
+            });
+        }
+    
+        eel.expose(changePort);
+        function changePort() {
+            var port = document.getElementById("portInput").value;
+            eel.change_port(port)(function(response) {
+                update_output(response); 
+            });
+        }
+    
+        function handleCommand(event) {
+            if (event.key === "Enter") {
+                var command = document.getElementById("commandInput").value;
+                sendCommand(command);
+            }
+        }
+    
+        function updatePortField() {
+            eel.get_server_port()(function(port) {
+                if (port) {
+                    document.getElementById("portInput").value = port;
+                } else {
+                    document.getElementById("portInput").value = "Port unavailable";  
+                }
+            });
+        }
+
+        function handleCommand(event) {
+            if (event.key === "Enter") {
+                var command = document.getElementById("commandInput").value;
+                if (command.trim().toLowerCase() === "restart") {
+                    restartServer(); 
+                    document.getElementById("commandInput").value = ''; 
+                } else {
+                    sendCommand(command);
+                }
+            }
+        }
+
+        function restartServer() {
+            eel.restart_server()(function(response) {
+                update_output(response); 
+            });
+        }
+
+        function sendCommand(command) {
+            let consoleDiv = document.getElementById("console");
+            let newLine = document.createElement("div");
+            newLine.textContent = "> " + command;
+            newLine.className = 'console-message'; 
+            consoleDiv.appendChild(newLine);
+            consoleDiv.scrollTop = consoleDiv.scrollHeight;  
+            eel.send_command(command)(function(response) {  
+                update_output(response);  
+            });
+        }
+        window.onload = updatePortField;
+    </script>      
+</body>
+</html>

@@ -1,0 +1,103 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Install App</title>
+    <link rel="icon" href="/favicon.ico">
+    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Roboto', sans-serif;
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            background: #222;
+            color: #fff;
+            margin: 0;
+            height: 100vh;
+        }
+
+        h2 {
+            margin-bottom: 20px;
+        }
+
+        #description {
+            margin-bottom: 20px;
+            width: 90%;
+            text-align: center;
+        }
+
+        #progressBar {
+            width: 80%;
+            height: 20px;
+            background-color: #444;
+            border-radius: 10px;
+            overflow: hidden;
+            margin-bottom: 20px;
+        }
+
+        #progress {
+            height: 100%;
+            background-color: #007BFF;
+            width: 0%;
+            text-align: center;
+            line-height: 20px;
+            color: white;
+            border-radius: 10px;
+            transition: width 0.3s ease;
+        }
+
+        button {
+            padding: 10px 20px;
+            font-size: 16px;
+            cursor: pointer;
+            background-color: #007BFF;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            transition: background-color 0.3s ease;
+            margin-bottom: 20px;
+        }
+
+        button:hover {
+            background-color: #0056b3;
+        }
+    </style>
+</head>
+
+<body>
+    <h2>Download and Install App</h2>
+    <div id="description">
+        <p>This is a description of the app you're about to download and install. Feel free to customize it.</p>
+    </div>
+    <button onclick="startDownload()">Download</button>
+    <div id="progressBar">
+        <div id="progress">0%</div>
+    </div>
+
+    <script src="/eel.js"></script>
+    <script>
+        eel.expose(update_progress);
+
+        function update_progress(percent, message) {
+            var elem = document.getElementById("progress");
+            elem.style.width = percent + '%';
+            elem.innerText = message;
+            if (percent === 100) { 
+                setTimeout(function () {
+                    window.location.href = 'main.html'; 
+                }, 1500); 
+            }
+        }
+
+        function startDownload() {
+            eel.download_repository();
+        }
+    </script>
+</body>
+
+</html>
