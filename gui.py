@@ -7,6 +7,8 @@ import zipfile
 import io
 import time
 import shutil
+import configparser
+import sys
 
 eel.init('web')
 
@@ -25,10 +27,6 @@ def download_repository():
             shutil.rmtree(target_folder)
         os.makedirs('APP', exist_ok=True)
         os.rename(extracted_folder, target_folder)
-        otp_db_path = os.path.join(target_folder, 'otp.db')
-        if os.path.exists(otp_db_path):
-            root_path = os.path.dirname(os.path.realpath(__file__))
-            shutil.move(otp_db_path, os.path.join(root_path, 'otp.db'))
         shutil.rmtree('temp')
         eel.update_progress(100, "Download Complete")
         return True
@@ -36,29 +34,72 @@ def download_repository():
     return False
 
 def read_output(process, output_func):
-    while True:
-        output = process.stdout.readline()
-        if not output:
-            break
-        output_func(output.strip())
-        time.sleep(0.5)
+    try:
+        for line in iter(process.stdout.readline, ''):
+            output_func(line.strip())
+            time.sleep(0.1) 
+    except Exception as e:
+        output_func("Error reading output: " + str(e))
 
 @eel.expose
 def start_server():
     global server_process
     if server_process is None:
-        if not os.path.exists('APP/Content'):  
-            eel.start('install.html', size=(600, 700), mode='chrome')  
+        port = read_config_port()
+        app_script_path = os.path.join('APP', 'Content', 'app.py')
+        if not os.path.exists(app_script_path):
+            eel.update_progress(0, "Server script not found.")
+            print("Server script not found:", app_script_path)
+            return  
+        if not os.path.exists('APP/Content'):
+            eel.start('install.html', size=(600, 700), mode='chrome')
             return
-        print("starting server")
-        server_process = subprocess.Popen(['python', 'APP/Content/app.py'], stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True, bufsize=1)
-        threading.Thread(target=read_output, args=(server_process, eel.update_output)).start()
+        print("Starting server on port", port)
+        try:
+            server_process = subprocess.Popen(
+                [sys.executable, app_script_path, '--port', port],
+                stdout=subprocess.PIPE,
+                stderr=subprocess.STDOUT, 
+                text=True,
+                bufsize=1
+            )
+            thread = threading.Thread(target=read_output, args=(server_process, eel.update_output))
+            thread.daemon = True  
+            thread.start()
+        except Exception as e:
+            eel.update_progress(0, "Failed to start server: " + str(e))
+            print("Failed to start server:", e)
+
+@eel.expose
+def read_config_port():
+    config_path = os.path.join('APP', 'Content', 'config.ini')
+    if not os.path.exists(config_path):
+        print("Config file not found:", config_path)
+        return '8000'  
+    config = configparser.ConfigParser()
+    config.read(config_path)
+    if 'server' in config and 'port' in config['server']:
+        return config['server']['port']
+    else:
+        print("Failed to read 'port' from 'server' in config file")
+        return '8000'  
+
+@eel.expose
+def change_port(new_port):
+    config_path = os.path.join('APP', 'Content', 'config.ini')
+    config = configparser.ConfigParser()
+    config.read(config_path)
+    if 'server' not in config:
+        config['server'] = {}
+    config['server']['port'] = new_port
+    with open(config_path, 'w') as configfile:
+        config.write(configfile)
+    print(f"Port changed to {new_port}")
+    return f"Port updated to {new_port}"
 
 @eel.expose
 def get_server_port():
-    if server_process:
-        return server_process.port  
-    return None
+    return read_config_port()
 
 @eel.expose
 def stop_server():

@@ -184,11 +184,15 @@
         eel.expose(changePort);
         function changePort() {
             var port = document.getElementById("portInput").value;
-            eel.change_port(port)(function(response) {
-                update_output(response); 
-            });
+            if (port && !isNaN(port)) { 
+                eel.change_port(port)(function(response) {
+                    update_output(response);
+                });
+            } else {
+                update_output("Invalid port number");
+            }
         }
-    
+
         function handleCommand(event) {
             if (event.key === "Enter") {
                 var command = document.getElementById("commandInput").value;
