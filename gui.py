@@ -108,6 +108,7 @@ def stop_server():
         server_process.terminate()
         server_process.wait()
         server_process = None
+        return f"Server Stopped"
         
 @eel.expose
 def restart_server():
@@ -115,4 +116,4 @@ def restart_server():
     start_server()  
 
 start_page = 'install.html' if not os.path.exists('APP/Content') else 'main.html'
-eel.start(start_page, size=(600, 700), mode='chrome')
+eel.start(start_page, size=(550, 700), mode='chrome', resizable=False)
